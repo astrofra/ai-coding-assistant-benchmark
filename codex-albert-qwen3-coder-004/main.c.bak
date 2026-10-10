@@ -1,0 +1,604 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
+/* Vector operations */
+typedef struct {
+    double x, y, z;
+} vec3;
+
+vec3 vec3_add(vec3 a, vec3 b) {
+    vec3 r;
+    r.x = a.x + b.x;
+    r.y = a.y + b.y;
+    r.z = a.z + b.z;
+    return r;
+}
+
+vec3 vec3_sub(vec3 a, vec3 b) {
+    vec3 r;
+    r.x = a.x - b.x;
+    r.y = a.y - b.y;
+    r.z = a.z - b.z;
+    return r;
+}
+
+vec3 vec3_mul(vec3 a, double s) {
+    vec3 r;
+    r.x = a.x * s;
+    r.y = a.y * s;
+    r.z = a.z * s;
+    return r;
+}
+
+vec3 vec3_div(vec3 a, double s) {
+    vec3 r;
+    r.x = a.x / s;
+    r.y = a.y / s;
+    r.z = a.z / s;
+    return r;
+}
+
+double vec3_dot(vec3 a, vec3 b) {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+vec3 vec3_cross(vec3 a, vec3 b) {
+    vec3 r;
+    r.x = a.y * b.z - a.z * b.y;
+    r.y = a.z * b.x - a.x * b.z;
+    r.z = a.x * b.y - a.y * b.x;
+    return r;
+}
+
+double vec3_length(vec3 a) {
+    return sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
+}
+
+double vec3_length_squared(vec3 a) {
+    return a.x * a.x + a.y * a.y + a.z * a.z;
+}
+
+vec3 vec3_normalize(vec3 a) {
+    double len = vec3_length(a);
+    if (len > 1e-10) {
+        return vec3_div(a, len);
+    }
+    vec3 r;
+    r.x = 0.0;
+    r.y = 0.0;
+    r.z = 0.0;
+    return r;
+}
+
+/* Ray structure */
+typedef struct {
+    vec3 origin;
+    vec3 direction;
+} ray;
+
+/* Sphere structure */
+typedef struct {
+    vec3 center;
+    double radius;
+} sphere;
+
+/* Plane structure */
+typedef struct {
+    vec3 normal;
+    double distance;
+} plane;
+
+/* Material structure */
+typedef struct {
+    vec3 albedo;
+    double reflectivity;
+    double refractivity;
+    double ior;
+} material;
+
+/* Light structure */
+typedef struct {
+    vec3 position;
+    vec3 intensity;
+} light;
+
+/* Scene constants */
+const int WIDTH = 1280;
+const int HEIGHT = 720;
+const double FOV = 45.0;
+const double ASPECT_RATIO = (double)WIDTH / (double)HEIGHT;
+const double EPSILON = 1e-4;
+const int MAX_BOUNCES = 8;
+
+/* Sky colors */
+const vec3 SKY_DARK_RED = {0.18, 0.01, 0.015};
+const vec3 SKY_ORANGE = {1.0, 0.25, 0.03};
+
+/* Materials */
+const material GLASS_MATERIAL = {{1.0, 1.0, 1.0}, 0.0, 1.0, 1.5};
+const material CHROME_MATERIAL = {{0.8, 0.8, 0.8}, 0.95, 0.0, 1.0};
+
+/* Lights */
+const light LIGHTS[] = {
+    {{-3.5, 6.0, 4.5}, {1.0, 1.0, 1.0}},   
+    {{4.0, 3.0, 3.0}, {0.35, 0.35, 0.35}}, 
+    {{0.5, 5.0, -4.0}, {0.7, 0.7, 0.7}}    
+};
+const int NUM_LIGHTS = 3;
+
+/* Spheres */
+const sphere SPHERES[] = {
+    {{-1.25, 1.0, 0.0}, 1.0}, 
+    {{1.25, 1.0, 0.0}, 1.0}   
+};
+const int NUM_SPHERES = 2;
+
+/* Ground plane */
+const plane GROUND_PLANE = {{0.0, 1.0, 0.0}, 0.0};
+
+/* Camera */
+const vec3 CAMERA_POS = {0.0, 2.6, 6.5};
+const vec3 CAMERA_TARGET = {0.0, 1.0, 0.0};
+const vec3 CAMERA_UP = {0.0, 1.0, 0.0};
+
+/* Sky color function */
+vec3 sky_color(vec3 direction) {
+    double t;
+    vec3 result;
+    t = pow(fabs(direction.y), 0.65);
+    if (t < 0.0) t = 0.0;
+    if (t > 1.0) t = 1.0;
+    result.x = (1.0 - t) * SKY_ORANGE.x + t * SKY_DARK_RED.x;
+    result.y = (1.0 - t) * SKY_ORANGE.y + t * SKY_DARK_RED.y;
+    result.z = (1.0 - t) * SKY_ORANGE.z + t * SKY_DARK_RED.z;
+    return result;
+}
+
+/* Checkerboard pattern */
+vec3 checkerboard_pattern(double x, double z) {
+    int ix, iz;
+    vec3 result;
+    ix = (int)floor(x);
+    iz = (int)floor(z);
+    if ((ix + iz) % 2 == 0) {
+        result.x = 1.0;
+        result.y = 1.0;
+        result.z = 1.0;
+    } else {
+        result.x = 0.0;
+        result.y = 0.0;
+        result.z = 0.0;
+    }
+    return result;
+}
+
+/* Ray-sphere intersection */
+int ray_sphere_intersect(ray r, sphere s, double *t) {
+    vec3 oc;
+    double a, b, c, discriminant, sqrt_discriminant;
+    double t1, t2;
+    oc = vec3_sub(r.origin, s.center);
+    a = vec3_dot(r.direction, r.direction);
+    b = 2.0 * vec3_dot(oc, r.direction);
+    c = vec3_dot(oc, oc) - s.radius * s.radius;
+    discriminant = b * b - 4 * a * c;
+
+    if (discriminant < 0) {
+        return 0;
+    }
+
+    sqrt_discriminant = sqrt(discriminant);
+    t1 = (-b - sqrt_discriminant) / (2.0 * a);
+    t2 = (-b + sqrt_discriminant) / (2.0 * a);
+
+    if (t1 > EPSILON) {
+        *t = t1;
+        return 1;
+    } else if (t2 > EPSILON) {
+        *t = t2;
+        return 1;
+    }
+
+    return 0;
+}
+
+/* Ray-plane intersection */
+int ray_plane_intersect(ray r, plane p, double *t) {
+    double denom;
+    denom = vec3_dot(p.normal, r.direction);
+    if (fabs(denom) < EPSILON) {
+        return 0;
+    }
+
+    *t = (p.distance - vec3_dot(p.normal, r.origin)) / denom;
+    if (*t > EPSILON) {
+        return 1;
+    }
+    return 0;
+}
+
+/* Fresnel reflection coefficient (Schlick's approximation) */
+double fresnel(double cos_theta, double eta_ratio) {
+    double r0;
+    r0 = (1.0 - eta_ratio) / (1.0 + eta_ratio);
+    r0 = r0 * r0;
+    return r0 + (1.0 - r0) * pow(1.0 - cos_theta, 5.0);
+}
+
+/* Reflect vector */
+vec3 reflect(vec3 incident, vec3 normal) {
+    vec3 result;
+    result = vec3_sub(incident, vec3_mul(normal, 2.0 * vec3_dot(incident, normal)));
+    return result;
+}
+
+/* Refract vector */
+vec3 refract(vec3 incident, vec3 normal, double eta_ratio) {
+    double cos_i, k;
+    vec3 refracted;
+    cos_i = vec3_dot(incident, normal);
+    k = 1.0 - eta_ratio * eta_ratio * (1.0 - cos_i * cos_i);
+    
+    if (k < 0.0) {
+        refracted.x = 0.0;
+        refracted.y = 0.0;
+        refracted.z = 0.0;
+        return refracted;
+    }
+
+    refracted = vec3_sub(
+        vec3_mul(incident, eta_ratio),
+        vec3_mul(normal, eta_ratio * cos_i + sqrt(k))
+    );
+    return refracted;
+}
+
+/* Component-wise vector multiplication */
+vec3 vec3_mul_components(vec3 a, vec3 b) {
+    vec3 r;
+    r.x = a.x * b.x;
+    r.y = a.y * b.y;
+    r.z = a.z * b.z;
+    return r;
+}
+
+/* Trace ray */
+vec3 trace_ray(ray r, int depth) {
+    double closest_t;
+    int hit_object;
+    vec3 hit_point, hit_normal;
+    material hit_material;
+    double t, t_plane, cos_theta, reflect_coeff, refract_coeff;
+    int i, j, in_shadow;
+    vec3 light_dir, light_intensity, view_dir, reflect_dir;
+    double diff, spec;
+    vec3 color, temp_vec3_1, temp_vec3_2, temp_vec3_3;
+    vec3 reflect_color, refract_color;
+    double transmittance;
+    vec3 fog_color;
+    double temp_double;
+    double light_distance;
+    vec3 temp_vec3_4, temp_vec3_5;
+
+    if (depth >= MAX_BOUNCES) {
+        return sky_color(r.direction);
+    }
+
+    closest_t = 1e20;
+    hit_object = -1;
+
+    /* Check sphere intersections */
+    for (i = 0; i < NUM_SPHERES; i++) {
+        if (ray_sphere_intersect(r, SPHERES[i], &t) && t < closest_t) {
+            closest_t = t;
+            hit_object = i;
+            hit_point = vec3_add(r.origin, vec3_mul(r.direction, t));
+            
+            hit_normal = vec3_normalize(vec3_sub(hit_point, SPHERES[i].center));
+            
+            if (i == 0) {
+                double dot = vec3_dot(r.direction, hit_normal);
+                if (dot > 0.0) {
+                    hit_normal = vec3_mul(hit_normal, -1.0);
+                }
+            }
+            
+            hit_material = (i == 0) ? GLASS_MATERIAL : CHROME_MATERIAL;
+        }
+    }
+
+    /* Check plane intersection */
+    if (ray_plane_intersect(r, GROUND_PLANE, &t_plane) && t_plane < closest_t) {
+        closest_t = t_plane;
+        hit_object = NUM_SPHERES;
+        hit_point = vec3_add(r.origin, vec3_mul(r.direction, t_plane));
+        
+        hit_normal.x = 0.0;
+        hit_normal.y = 1.0;
+        hit_normal.z = 0.0;
+        
+        temp_vec3_1 = checkerboard_pattern(hit_point.x, hit_point.z);
+        hit_material.albedo = temp_vec3_1;
+        hit_material.reflectivity = 0.0;
+        hit_material.refractivity = 0.0;
+        hit_material.ior = 1.0;
+    }
+
+    /* If no intersection, return sky color */
+    if (hit_object == -1) {
+        return sky_color(r.direction);
+    }
+
+    /* Shadow ray test */
+    color.x = 0.0;
+    color.y = 0.0;
+    color.z = 0.0;
+    
+    temp_vec3_1 = vec3_mul(hit_material.albedo, 0.1);
+    color = vec3_add(color, temp_vec3_1);
+
+    /* Light calculations */
+    for (i = 0; i < NUM_LIGHTS; i++) {
+        light_dir = vec3_normalize(vec3_sub(LIGHTS[i].position, hit_point));
+        temp_double = vec3_length(vec3_sub(LIGHTS[i].position, hit_point));
+        light_distance = temp_double;
+        
+        /* Shadow ray */
+        temp_vec3_1 = vec3_mul(hit_normal, EPSILON);
+        ray shadow_ray;
+        shadow_ray.origin = vec3_add(hit_point, temp_vec3_1);
+        shadow_ray.direction = light_dir;
+        in_shadow = 0;
+        
+        /* Check if shadow ray hits any object before reaching the light */
+        for (j = 0; j < NUM_SPHERES; j++) {
+            if (j == 0 && hit_object == 0) continue;
+            if (ray_sphere_intersect(shadow_ray, SPHERES[j], &t) && t < light_distance) {
+                in_shadow = 1;
+                break;
+            }
+        }
+        
+        /* Check ground plane for shadow */
+        if (!in_shadow) {
+            if (ray_plane_intersect(shadow_ray, GROUND_PLANE, &t) && t < light_distance) {
+                in_shadow = 1;
+            }
+        }
+
+        if (!in_shadow) {
+            /* Diffuse lighting (Lambert) */
+            diff = fmax(0.0, vec3_dot(hit_normal, light_dir));
+            temp_vec3_1 = vec3_mul(LIGHTS[i].intensity, diff);
+            light_intensity = temp_vec3_1;
+            
+            /* Specular lighting (Phong) */
+            view_dir = vec3_normalize(vec3_sub(CAMERA_POS, hit_point));
+            reflect_dir = reflect(vec3_mul(light_dir, -1.0), hit_normal);
+            spec = pow(fmax(0.0, vec3_dot(view_dir, reflect_dir)), 32.0);
+            
+            if (hit_object < NUM_SPHERES) {
+                if (hit_object == 0) {
+                    /* Glass sphere */
+                    temp_vec3_1 = vec3_mul(hit_material.albedo, light_intensity);
+                    color = vec3_add(color, temp_vec3_1);
+                } else {
+                    /* Chrome sphere */
+                    temp_vec3_1 = vec3_mul(hit_material.albedo, light_intensity);
+                    color = vec3_add(color, temp_vec3_1);
+                    temp_vec3_2 = vec3_mul(light_intensity, spec * 0.5);
+                    temp_vec3_3.x = 1.0;
+                    temp_vec3_3.y = 1.0;
+                    temp_vec3_3.z = 1.0;
+                    temp_vec3_1 = vec3_mul_components(temp_vec3_3, temp_vec3_2);
+                    color = vec3_add(color, temp_vec3_1);
+                }
+            } else {
+                /* Ground plane */
+                temp_vec3_1 = vec3_mul(hit_material.albedo, light_intensity);
+                color = vec3_add(color, temp_vec3_1);
+            }
+        }
+    }
+
+    /* Reflection and refraction */
+    reflect_color.x = 0.0;
+    reflect_color.y = 0.0;
+    reflect_color.z = 0.0;
+    refract_color.x = 0.0;
+    refract_color.y = 0.0;
+    refract_color.z = 0.0;
+
+    if (hit_material.reflectivity > 0.0 || hit_material.refractivity > 0.0) {
+        vec3 reflect_dir = reflect(r.direction, hit_normal);
+        ray reflect_ray;
+        temp_vec3_1 = vec3_mul(hit_normal, EPSILON);
+        reflect_ray.origin = vec3_add(hit_point, temp_vec3_1);
+        reflect_ray.direction = reflect_dir;
+        reflect_color = trace_ray(reflect_ray, depth + 1);
+
+        if (hit_material.refractivity > 0.0) {
+            double eta_ratio = (hit_object == 0) ? 1.0 / hit_material.ior : hit_material.ior / 1.0;
+            vec3 refract_dir = refract(r.direction, hit_normal, eta_ratio);
+            if (vec3_length(refract_dir) > 0.0) {
+                ray refract_ray;
+                temp_vec3_1 = vec3_mul(hit_normal, -EPSILON);
+                refract_ray.origin = vec3_add(hit_point, temp_vec3_1);
+                refract_ray.direction = refract_dir;
+                refract_color = trace_ray(refract_ray, depth + 1);
+            }
+        }
+    }
+
+    /* Mix colors based on material properties */
+    if (hit_object < NUM_SPHERES) {
+        if (hit_object == 0) {
+            /* Glass sphere */
+            cos_theta = vec3_dot(r.direction, hit_normal);
+            reflect_coeff = fresnel(cos_theta, hit_material.ior);
+            refract_coeff = 1.0 - reflect_coeff;
+            temp_vec3_1 = vec3_mul(reflect_color, reflect_coeff);
+            temp_vec3_2 = vec3_mul(refract_color, refract_coeff);
+            color = vec3_add(temp_vec3_1, temp_vec3_2);
+        } else {
+            /* Chrome sphere */
+            temp_vec3_1 = vec3_mul(color, 1.0 - hit_material.reflectivity);
+            temp_vec3_2 = vec3_mul(reflect_color, hit_material.reflectivity);
+            color = vec3_add(temp_vec3_1, temp_vec3_2);
+        }
+    } else {
+        /* Ground plane */
+        temp_vec3_1 = vec3_mul(color, 1.0 - hit_material.reflectivity);
+        temp_vec3_2 = vec3_mul(reflect_color, hit_material.reflectivity);
+        color = vec3_add(temp_vec3_1, temp_vec3_2);
+    }
+
+    /* Apply fog */
+    transmittance = exp(-0.035 * closest_t);
+    fog_color = sky_color(r.direction);
+    temp_vec3_1 = vec3_mul(color, transmittance);
+    temp_vec3_2 = vec3_mul(fog_color, 1.0 - transmittance);
+    color = vec3_add(temp_vec3_1, temp_vec3_2);
+
+    return color;
+}
+
+/* Convert linear RGB to sRGB */
+double linear_to_srgb(double c) {
+    if (c <= 0.0031308) {
+        return 12.92 * c;
+    } else {
+        return 1.055 * pow(c, 1.0 / 2.4) - 0.055;
+    }
+}
+
+/* Save TGA file */
+int save_tga(const char* filename, unsigned char* pixels, int width, int height) {
+    FILE* fp;
+    unsigned char header[18];
+    int y, x, idx;
+    unsigned char b, g, r;
+
+    fp = fopen(filename, "wb");
+    if (!fp) {
+        fprintf(stderr, "Error: Cannot open %s for writing\n", filename);
+        return 0;
+    }
+
+    header[0] = 0;
+    header[1] = 0;
+    header[2] = 2;
+    header[3] = 0;
+    header[4] = 0;
+    header[5] = 0;
+    header[6] = 0;
+    header[7] = 0;
+    header[8] = 0;
+    header[9] = 0;
+    header[10] = 0;
+    header[11] = 0;
+    header[12] = width & 0xFF;
+    header[13] = (width >> 8) & 0xFF;
+    header[14] = height & 0xFF;
+    header[15] = (height >> 8) & 0xFF;
+    header[16] = 24;
+    header[17] = 0x20;
+
+    if (fwrite(header, 1, 18, fp) != 18) {
+        fclose(fp);
+        fprintf(stderr, "Error: Failed to write TGA header\n");
+        return 0;
+    }
+
+    for (y = height - 1; y >= 0; y--) {
+        for (x = 0; x < width; x++) {
+            idx = (y * width + x) * 3;
+            b = pixels[idx];
+            g = pixels[idx + 1];
+            r = pixels[idx + 2];
+            if (fwrite(&b, 1, 1, fp) != 1 || 
+                fwrite(&g, 1, 1, fp) != 1 || 
+                fwrite(&r, 1, 1, fp) != 1) {
+                fclose(fp);
+                fprintf(stderr, "Error: Failed to write pixel data\n");
+                return 0;
+            }
+        }
+    }
+
+    fclose(fp);
+    return 1;
+}
+
+int main(void) {
+    unsigned char* pixels;
+    int y, x, sy, sx, idx;
+    double u, v, ndc_x, ndc_y;
+    vec3 pixel_color, temp_vec3_1, temp_vec3_2, ray_dir, camera_forward, camera_right, camera_up;
+    ray r;
+    vec3 color;
+    double temp_double;
+    double fov_rad, half_height, half_width;
+
+    pixels = malloc(WIDTH * HEIGHT * 3);
+    if (!pixels) {
+        fprintf(stderr, "Error: Memory allocation failed\n");
+        return 1;
+    }
+
+    camera_forward = vec3_normalize(vec3_sub(CAMERA_TARGET, CAMERA_POS));
+    camera_right = vec3_normalize(vec3_cross(camera_forward, CAMERA_UP));
+    camera_up = vec3_cross(camera_right, camera_forward);
+
+    fov_rad = FOV * M_PI / 180.0;
+    half_height = tan(fov_rad / 2.0);
+    half_width = half_height * ASPECT_RATIO;
+
+    for (y = 0; y < HEIGHT; y++) {
+        for (x = 0; x < WIDTH; x++) {
+            pixel_color.x = 0.0;
+            pixel_color.y = 0.0;
+            pixel_color.z = 0.0;
+
+            for (sy = 0; sy < 2; sy++) {
+                for (sx = 0; sx < 2; sx++) {
+                    u = (x + (sx + 0.5) / 2.0) / WIDTH;
+                    v = (y + (sy + 0.5) / 2.0) / HEIGHT;
+
+                    ndc_x = (2.0 * u - 1.0) * half_width;
+                    ndc_y = (1.0 - 2.0 * v) * half_height;
+
+                    temp_vec3_1 = vec3_mul(camera_right, ndc_x);
+                    ray_dir = vec3_add(temp_vec3_1, vec3_mul(camera_up, ndc_y));
+                    ray_dir = vec3_add(ray_dir, camera_forward);
+                    ray_dir = vec3_normalize(ray_dir);
+
+                    r.origin = CAMERA_POS;
+                    r.direction = ray_dir;
+                    color = trace_ray(r, 0);
+
+                    pixel_color = vec3_add(pixel_color, color);
+                }
+            }
+
+            pixel_color = vec3_div(pixel_color, 4.0);
+
+            idx = (y * WIDTH + x) * 3;
+            temp_double = fmin(1.0, linear_to_srgb(pixel_color.z));
+            pixels[idx] = (unsigned char)(temp_double * 255.0);
+            temp_double = fmin(1.0, linear_to_srgb(pixel_color.y));
+            pixels[idx + 1] = (unsigned char)(temp_double * 255.0);
+            temp_double = fmin(1.0, linear_to_srgb(pixel_color.x));
+            pixels[idx + 2] = (unsigned char)(temp_double * 255.0);
+        }
+    }
+
+    if (!save_tga("out.tga", pixels, WIDTH, HEIGHT)) {
+        free(pixels);
+        return 1;
+    }
+
+    free(pixels);
+    return 0;
+}
