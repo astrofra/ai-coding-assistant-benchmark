@@ -1,0 +1,552 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <stdint.h>
+
+// Vector operations
+typedef struct {
+    float x, y, z;
+} vec3;
+
+static inline vec3 vec3_add(vec3 a, vec3 b) {
+    return (vec3){a.x + b.x, a.y + b.y, a.z + b.z};
+}
+
+static inline vec3 vec3_sub(vec3 a, vec3 b) {
+    return (vec3){a.x - b.x, a.y - b.y, a.z - b.z};
+}
+
+static inline vec3 vec3_mul(vec3 a, vec3 b) {
+    return (vec3){a.x * b.x, a.y * b.y, a.z * b.z};
+}
+
+static inline vec3 vec3_scale(float s, vec3 a) {
+    return (vec3){s * a.x, s * a.y, s * a.z};
+}
+
+static inline float vec3_dot(vec3 a, vec3 b) {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+static inline vec3 vec3_cross(vec3 a, vec3 b) {
+    return (vec3){
+        a.y * b.z - a.z * b.y,
+        a.z * b.x - a.x * b.z,
+        a.x * b.y - a.y * b.x
+    };
+}
+
+static inline float vec3_length(vec3 a) {
+    return sqrtf(a.x * a.x + a.y * a.y + a.z * a.z);
+}
+
+static inline float vec3_length_sq(vec3 a) {
+    return a.x * a.x + a.y * a.y + a.z * a.z;
+}
+
+static inline vec3 vec3_normalize(vec3 a) {
+    float len = vec3_length(a);
+    if (len > 1e-8f) {
+        return vec3_scale(1.0f / len, a);
+    }
+    return (vec3){0.0f, 0.0f, 0.0f};
+}
+
+// Ray structure
+typedef struct {
+    vec3 origin;
+    vec3 direction;
+} ray;
+
+// Material structure
+typedef enum {
+    MATERIAL_LAMBERTIAN,
+    MATERIAL_METAL,
+    MATERIAL_DIELECTRIC
+} material_type;
+
+typedef struct {
+    material_type type;
+    vec3 albedo;
+    float roughness;
+    float ior; // index of refraction
+} material;
+
+// Sphere structure
+typedef struct {
+    vec3 center;
+    float radius;
+    material mat;
+} sphere;
+
+// Plane structure
+typedef struct {
+    vec3 point;
+    vec3 normal;
+    material mat;
+} plane;
+
+// Light structure
+typedef struct {
+    vec3 position;
+    vec3 intensity;
+} light;
+
+// Scene structure
+typedef struct {
+    sphere spheres[2];
+    plane ground;
+    light lights[3];
+    vec3 sky_zenith;
+    vec3 sky_horizon;
+    vec3 sky_nadir;
+    float fog_density;
+} scene;
+
+// Global scene
+scene g_scene;
+
+// Sky color computation
+vec3 sky_color(vec3 direction) {
+    // Clamp y to [0, 1] for numerical robustness
+    float y = fmaxf(0.0f, fminf(1.0f, fabsf(direction.y)));
+    
+    // Apply power function for smooth gradient
+    float t = powf(y, 0.65f);
+    
+    // Linear interpolation between colors
+    vec3 color = vec3_add(
+        vec3_scale(1.0f - t, g_scene.sky_nadir),
+        vec3_scale(t, g_scene.sky_horizon)
+    );
+    
+    return color;
+}
+
+// Checkerboard pattern
+vec3 checkerboard_pattern(vec3 point) {
+    int x = (int)floorf(point.x);
+    int z = (int)floorf(point.z);
+    
+    // Alternate colors based on sum of coordinates
+    if ((x + z) % 2 == 0) {
+        return (vec3){1.0f, 1.0f, 1.0f}; // White
+    } else {
+        return (vec3){0.0f, 0.0f, 0.0f}; // Black
+    }
+}
+
+// Ray-sphere intersection
+int intersect_sphere(ray r, sphere s, float *t) {
+    vec3 oc = vec3_sub(r.origin, s.center);
+    float a = vec3_dot(r.direction, r.direction);
+    float b = 2.0f * vec3_dot(oc, r.direction);
+    float c = vec3_dot(oc, oc) - s.radius * s.radius;
+    float discriminant = b * b - 4 * a * c;
+    
+    if (discriminant < 0) {
+        return 0;
+    }
+    
+    float sqrt_discriminant = sqrtf(discriminant);
+    float t1 = (-b - sqrt_discriminant) / (2.0f * a);
+    float t2 = (-b + sqrt_discriminant) / (2.0f * a);
+    
+    // Return the closest positive intersection
+    if (t1 > 1e-4f) {
+        *t = t1;
+        return 1;
+    } else if (t2 > 1e-4f) {
+        *t = t2;
+        return 1;
+    }
+    
+    return 0;
+}
+
+// Ray-plane intersection
+int intersect_plane(ray r, plane p, float *t) {
+    float denom = vec3_dot(p.normal, r.direction);
+    
+    if (fabsf(denom) > 1e-6f) {
+        vec3 op = vec3_sub(p.point, r.origin);
+        *t = vec3_dot(op, p.normal) / denom;
+        
+        if (*t > 1e-4f) {
+            return 1;
+        }
+    }
+    
+    return 0;
+}
+
+// Fresnel reflectance for dielectrics (Schlick's approximation)
+float fresnel_dielectric(float cos_theta, float eta) {
+    float r0 = (1.0f - eta) / (1.0f + eta);
+    r0 = r0 * r0;
+    return r0 + (1.0f - r0) * powf(1.0f - cos_theta, 5.0f);
+}
+
+// Reflect vector
+vec3 reflect(vec3 incident, vec3 normal) {
+    return vec3_sub(incident, vec3_scale(2.0f * vec3_dot(incident, normal), normal));
+}
+
+// Refract vector
+vec3 refract(vec3 incident, vec3 normal, float eta) {
+    float cos_i = vec3_dot(normal, incident);
+    float k = 1.0f - eta * eta * (1.0f - cos_i * cos_i);
+    
+    if (k < 0.0f) {
+        return (vec3){0.0f, 0.0f, 0.0f}; // Total internal reflection
+    }
+    
+    return vec3_sub(
+        vec3_scale(eta, incident),
+        vec3_scale(eta * cos_i + sqrtf(k), normal)
+    );
+}
+
+// Sample lights for shading
+vec3 shade_lighting(vec3 point, vec3 normal, vec3 view_dir, material mat) {
+    vec3 color = (vec3){0.0f, 0.0f, 0.0f};
+    
+    for (int i = 0; i < 3; i++) {
+        light l = g_scene.lights[i];
+        
+        vec3 light_dir = vec3_normalize(vec3_sub(l.position, point));
+        
+        // Shadow ray
+        ray shadow_ray = {point, light_dir};
+        float t;
+        
+        // Check if we're in shadow
+        int in_shadow = 0;
+        if (mat.type == MATERIAL_DIELECTRIC) {
+            // Glass allows some light through
+            // Simple approximation: attenuate light
+            vec3 attenuated_intensity = vec3_scale(0.2f, l.intensity); // Tinted attenuation
+            color = vec3_add(color, attenuated_intensity);
+        } else {
+            // For metal and lambertian, check for shadows
+            if (intersect_sphere(shadow_ray, g_scene.spheres[0], &t) || 
+                intersect_sphere(shadow_ray, g_scene.spheres[1], &t) ||
+                intersect_plane(shadow_ray, g_scene.ground, &t)) {
+                // Hit something, so in shadow
+                in_shadow = 1;
+            }
+            
+            if (!in_shadow) {
+                // Diffuse lighting (Lambert)
+                float diffuse = fmaxf(0.0f, vec3_dot(normal, light_dir));
+                
+                // Specular lighting (Phong)
+                vec3 reflect_dir = reflect(vec3_scale(-1.0f, light_dir), normal);
+                float specular = powf(fmaxf(0.0f, vec3_dot(view_dir, reflect_dir)), 32.0f);
+                
+                vec3 diffuse_color = vec3_scale(diffuse, mat.albedo);
+                vec3 specular_color = vec3_scale(specular, (vec3){1.0f, 1.0f, 1.0f});
+                
+                // Combine with light intensity
+                vec3 light_contribution = vec3_add(diffuse_color, specular_color);
+                light_contribution = vec3_scale(vec3_dot(light_contribution, l.intensity), light_contribution);
+                
+                color = vec3_add(color, light_contribution);
+            }
+        }
+    }
+    
+    return color;
+}
+
+// Trace a ray through the scene
+vec3 trace_ray(ray r, int depth) {
+    if (depth <= 0) {
+        return sky_color(r.direction);
+    }
+    
+    float closest_t = 1e20f;
+    int hit_sphere = -1;
+    int hit_plane = 0;
+    float t;
+    
+    // Find closest intersection
+    for (int i = 0; i < 2; i++) {
+        if (intersect_sphere(r, g_scene.spheres[i], &t) && t < closest_t) {
+            closest_t = t;
+            hit_sphere = i;
+        }
+    }
+    
+    if (intersect_plane(r, g_scene.ground, &t) && t < closest_t) {
+        closest_t = t;
+        hit_plane = 1;
+        hit_sphere = -1;
+    }
+    
+    // No intersection
+    if (closest_t > 1e19f) {
+        return sky_color(r.direction);
+    }
+    
+    // Get intersection point
+    vec3 hit_point = vec3_add(r.origin, vec3_scale(closest_t, r.direction));
+    
+    // Determine material
+    material mat;
+    vec3 albedo = (vec3){0.0f, 0.0f, 0.0f};
+    
+    if (hit_sphere >= 0) {
+        mat = g_scene.spheres[hit_sphere].mat;
+        albedo = mat.albedo;
+    } else if (hit_plane) {
+        mat = g_scene.ground.mat;
+        // Apply checkerboard pattern
+        albedo = checkerboard_pattern(hit_point);
+    }
+    
+    // Compute normal
+    vec3 normal;
+    if (hit_sphere >= 0) {
+        normal = vec3_normalize(vec3_sub(hit_point, g_scene.spheres[hit_sphere].center));
+        // Ensure normal points outward
+        if (vec3_dot(normal, r.direction) > 0) {
+            normal = vec3_scale(-1.0f, normal);
+        }
+    } else if (hit_plane) {
+        normal = (vec3){0.0f, 1.0f, 0.0f};
+    }
+    
+    // View direction
+    vec3 view_dir = vec3_normalize(vec3_scale(-1.0f, r.direction));
+    
+    // Shading
+    vec3 color = shade_lighting(hit_point, normal, view_dir, mat);
+    
+    // Handle reflections and refractions
+    vec3 reflect_color = (vec3){0.0f, 0.0f, 0.0f};
+    
+    if (mat.type == MATERIAL_METAL) {
+        // Metal reflection
+        vec3 reflect_dir = reflect(r.direction, normal);
+        ray reflect_ray = {vec3_add(hit_point, vec3_scale(1e-4f, normal)), reflect_dir};
+        reflect_color = trace_ray(reflect_ray, depth - 1);
+        color = vec3_add(vec3_mul(albedo, color), vec3_scale(mat.roughness, reflect_color));
+    } else if (mat.type == MATERIAL_DIELECTRIC) {
+        // Dielectric (glass) reflection and refraction
+        float cos_theta = fmaxf(-1.0f, fminf(1.0f, vec3_dot(normal, r.direction)));
+        float eta = mat.ior; // 1.5 for glass
+        
+        // Determine if ray is entering or exiting the sphere
+        int entering = (cos_theta < 0);
+        if (entering) {
+            // Ray is entering, flip normal
+            normal = vec3_scale(-1.0f, normal);
+            cos_theta = -cos_theta;
+            eta = 1.0f / eta; // Switch indices
+        }
+        
+        // Calculate Fresnel reflectance
+        float reflect_prob = fresnel_dielectric(cos_theta, eta);
+        
+        // Reflection
+        vec3 reflect_dir = reflect(r.direction, normal);
+        ray reflect_ray = {vec3_add(hit_point, vec3_scale(1e-4f, normal)), reflect_dir};
+        reflect_color = trace_ray(reflect_ray, depth - 1);
+        
+        // Refraction
+        vec3 refract_dir = refract(r.direction, normal, eta);
+        if (vec3_length(refract_dir) > 1e-6f) {
+            ray refract_ray = {vec3_add(hit_point, vec3_scale(-1e-4f, normal)), refract_dir};
+            refract_color = trace_ray(refract_ray, depth - 1);
+        }
+        
+        // Combine reflection and refraction
+        color = vec3_add(
+            vec3_scale(1.0f - reflect_prob, refract_color),
+            vec3_scale(reflect_prob, reflect_color)
+        );
+    }
+    
+    // Apply fog effect
+    float transmittance = expf(-g_scene.fog_density * closest_t);
+    vec3 fog_color = sky_color(r.direction);
+    color = vec3_add(
+        vec3_scale(transmittance, color),
+        vec3_scale(1.0f - transmittance, fog_color)
+    );
+    
+    return color;
+}
+
+// Convert linear RGB to sRGB
+float linear_to_srgb(float c) {
+    if (c <= 0.0031308f) {
+        return 12.92f * c;
+    } else {
+        return 1.055f * powf(c, 1.0f / 2.4f) - 0.055f;
+    }
+}
+
+// Save TGA image
+int save_tga(const char *filename, uint8_t *pixels, int width, int height) {
+    FILE *fp = fopen(filename, "wb");
+    if (!fp) {
+        fprintf(stderr, "Error: Could not open %s for writing\n", filename);
+        return 0;
+    }
+    
+    // TGA Header (18 bytes)
+    uint8_t header[18] = {0};
+    header[2] = 2; // Image type: uncompressed truecolor
+    header[12] = width & 0xFF; // Width low byte
+    header[13] = (width >> 8) & 0xFF; // Width high byte
+    header[14] = height & 0xFF; // Height low byte
+    header[15] = (height >> 8) & 0xFF; // Height high byte
+    header[16] = 24; // Pixel depth
+    header[17] = 0x20; // Descriptor: top-left origin, left-to-right pixel order
+    
+    fwrite(header, 1, 18, fp);
+    
+    // Write pixel data (BGR format)
+    for (int y = height - 1; y >= 0; y--) {
+        for (int x = 0; x < width; x++) {
+            int idx = (y * width + x) * 3;
+            // Write in BGR order
+            fputc(pixels[idx + 2], fp); // Blue
+            fputc(pixels[idx + 1], fp); // Green
+            fputc(pixels[idx], fp); // Red
+        }
+    }
+    
+    fclose(fp);
+    return 1;
+}
+
+// Initialize the scene
+void init_scene(void) {
+    // Sky colors
+    g_scene.sky_zenith = (vec3){0.18f, 0.01f, 0.015f};
+    g_scene.sky_horizon = (vec3){1.0f, 0.25f, 0.03f};
+    g_scene.sky_nadir = g_scene.sky_zenith;
+    g_scene.fog_density = 0.035f;
+    
+    // Ground plane
+    g_scene.ground.point = (vec3){0.0f, 0.0f, 0.0f};
+    g_scene.ground.normal = (vec3){0.0f, 1.0f, 0.0f};
+    g_scene.ground.mat.type = MATERIAL_LAMBERTIAN;
+    g_scene.ground.mat.albedo = (vec3){0.5f, 0.5f, 0.5f};
+    g_scene.ground.mat.roughness = 0.0f;
+    g_scene.ground.mat.ior = 1.0f;
+    
+    // Glass sphere (left)
+    g_scene.spheres[0].center = (vec3){-1.25f, 1.0f, 0.0f};
+    g_scene.spheres[0].radius = 1.0f;
+    g_scene.spheres[0].mat.type = MATERIAL_DIELECTRIC;
+    g_scene.spheres[0].mat.albedo = (vec3){1.0f, 1.0f, 1.0f};
+    g_scene.spheres[0].mat.roughness = 0.0f;
+    g_scene.spheres[0].mat.ior = 1.5f;
+    
+    // Chrome sphere (right)
+    g_scene.spheres[1].center = (vec3){1.25f, 1.0f, 0.0f};
+    g_scene.spheres[1].radius = 1.0f;
+    g_scene.spheres[1].mat.type = MATERIAL_METAL;
+    g_scene.spheres[1].mat.albedo = (vec3){0.8f, 0.82f, 0.85f}; // Silver-like color
+    g_scene.spheres[1].mat.roughness = 0.02f; // Very smooth
+    g_scene.spheres[1].mat.ior = 1.0f;
+    
+    // Lights
+    g_scene.lights[0].position = (vec3){-3.5f, 6.0f, 4.5f};
+    g_scene.lights[0].intensity = (vec3){1.0f, 1.0f, 1.0f};
+    
+    g_scene.lights[1].position = (vec3){4.0f, 3.0f, 3.0f};
+    g_scene.lights[1].intensity = (vec3){0.35f, 0.35f, 0.35f};
+    
+    g_scene.lights[2].position = (vec3){0.5f, 5.0f, -4.0f};
+    g_scene.lights[2].intensity = (vec3){0.7f, 0.7f, 0.7f};
+}
+
+int main(void) {
+    // Initialize scene
+    init_scene();
+    
+    // Image dimensions
+    const int width = 1280;
+    const int height = 720;
+    
+    // Allocate pixel buffer
+    uint8_t *pixels = (uint8_t *)malloc(width * height * 3);
+    if (!pixels) {
+        fprintf(stderr, "Error: Could not allocate pixel buffer\n");
+        return 1;
+    }
+    
+    // Camera setup
+    vec3 camera_pos = (vec3){0.0f, 2.6f, 6.5f};
+    vec3 camera_target = (vec3){0.0f, 1.0f, 0.0f};
+    vec3 camera_up = (vec3){0.0f, 1.0f, 0.0f};
+    
+    // Compute camera coordinate system
+    vec3 forward = vec3_normalize(vec3_sub(camera_target, camera_pos));
+    vec3 right = vec3_normalize(vec3_cross(forward, camera_up));
+    vec3 up = vec3_cross(right, forward);
+    
+    // Field of view
+    float fov = 45.0f * M_PI / 180.0f;
+    float aspect_ratio = (float)width / (float)height;
+    float half_height = tanf(fov / 2.0f);
+    float half_width = half_height * aspect_ratio;
+    
+    // Render image
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            vec3 color = (vec3){0.0f, 0.0f, 0.0f};
+            
+            // 2x2 subpixel sampling for anti-aliasing
+            for (int sy = 0; sy < 2; sy++) {
+                for (int sx = 0; sx < 2; sx++) {
+                    // Compute subpixel position
+                    float u = (x + (sx + 0.5f) / 2.0f) / width;
+                    float v = (y + (sy + 0.5f) / 2.0f) / height;
+                    
+                    // Scale and offset for camera coordinates
+                    float px = (2.0f * u - 1.0f) * half_width;
+                    float py = (1.0f - 2.0f * v) * half_height;
+                    
+                    // Ray direction
+                    vec3 ray_dir = vec3_normalize(vec3_add(
+                        vec3_scale(px, right),
+                        vec3_add(vec3_scale(py, up), forward)
+                    ));
+                    
+                    // Ray from camera
+                    ray r = {camera_pos, ray_dir};
+                    
+                    // Trace ray
+                    vec3 ray_color = trace_ray(r, 8);
+                    
+                    // Accumulate color
+                    color = vec3_add(color, ray_color);
+                }
+            }
+            
+            // Average the samples
+            color = vec3_scale(0.25f, color);
+            
+            // Convert to sRGB and clamp
+            int idx = (y * width + x) * 3;
+            pixels[idx] = (uint8_t)fminf(255.0f, 255.0f * linear_to_srgb(color.x));
+            pixels[idx + 1] = (uint8_t)fminf(255.0f, 255.0f * linear_to_srgb(color.y));
+            pixels[idx + 2] = (uint8_t)fminf(255.0f, 255.0f * linear_to_srgb(color.z));
+        }
+    }
+    
+    // Save the image
+    if (!save_tga("out.tga", pixels, width, height)) {
+        free(pixels);
+        return 1;
+    }
+    
+    free(pixels);
+    return 0;
+}
