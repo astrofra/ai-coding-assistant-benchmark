@@ -1,0 +1,509 @@
+#define _CRT_SECURE_NO_WARNINGS
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
+// Vector operations
+typedef struct {
+    double x, y, z;
+} vec3;
+
+vec3 vec3_add(vec3 a, vec3 b) {
+    return (vec3){a.x + b.x, a.y + b.y, a.z + b.z};
+}
+
+vec3 vec3_sub(vec3 a, vec3 b) {
+    return (vec3){a.x - b.x, a.y - b.y, a.z - b.z};
+}
+
+vec3 vec3_mul(vec3 a, double t) {
+    return (vec3){a.x * t, a.y * t, a.z * t};
+}
+
+vec3 vec3_div(vec3 a, double t) {
+    return (vec3){a.x / t, a.y / t, a.z / t};
+}
+
+double vec3_dot(vec3 a, vec3 b) {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+vec3 vec3_cross(vec3 a, vec3 b) {
+    return (vec3){
+        a.y * b.z - a.z * b.y,
+        a.z * b.x - a.x * b.z,
+        a.x * b.y - a.y * b.x
+    };
+}
+
+double vec3_length(vec3 a) {
+    return sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
+}
+
+double vec3_length_squared(vec3 a) {
+    return a.x * a.x + a.y * a.y + a.z * a.z;
+}
+
+vec3 vec3_normalize(vec3 a) {
+    double len = vec3_length(a);
+    if (len > 1e-10) {
+        return vec3_div(a, len);
+    }
+    return (vec3){0, 0, 0};
+}
+
+vec3 vec3_negate(vec3 a) {
+    return (vec3){-a.x, -a.y, -a.z};
+}
+
+// Ray structure
+typedef struct {
+    vec3 origin;
+    vec3 direction;
+} ray;
+
+// Sphere structure
+typedef struct {
+    vec3 center;
+    double radius;
+    vec3 color;
+    double reflectivity;
+    double transparency;
+    double refractive_index;
+} sphere;
+
+// Plane structure
+typedef struct {
+    vec3 point;
+    vec3 normal;
+    vec3 color1;
+    vec3 color2;
+} plane;
+
+// Light structure
+typedef struct {
+    vec3 position;
+    vec3 color;
+    double intensity;
+} light;
+
+// Scene objects
+sphere spheres[] = {
+    // Glass sphere
+    {{-1.25, 1.0, 0.0}, 1.0, {1.0, 1.0, 1.0}, 0.0, 0.9, 1.5},
+    // Chrome sphere
+    {{1.25, 1.0, 0.0}, 1.0, {0.8, 0.8, 0.8}, 0.95, 0.0, 1.0}
+};
+
+plane ground_plane = {
+    {0.0, 0.0, 0.0},
+    {0.0, 1.0, 0.0},
+    {1.0, 1.0, 1.0},  // White
+    {0.0, 0.0, 0.0}   // Black
+};
+
+light lights[] = {
+    {{-3.5, 6.0, 4.5}, {1.0, 1.0, 1.0}, 1.0},   // Key light
+    {{4.0, 3.0, 3.0}, {1.0, 1.0, 1.0}, 0.35},   // Fill light
+    {{0.5, 5.0, -4.0}, {1.0, 1.0, 1.0}, 0.7}    // Back light
+};
+
+// Sky color calculation
+vec3 sky_color(vec3 ray_dir) {
+    vec3 dark_red = {0.18, 0.01, 0.015};
+    vec3 orange = {1.0, 0.25, 0.03};
+    
+    double t = pow(fabs(ray_dir.y), 0.65);
+    t = fmax(0.0, fmin(1.0, t));  // Clamp to [0, 1]
+    
+    return (vec3){
+        (1 - t) * orange.x + t * dark_red.x,
+        (1 - t) * orange.y + t * dark_red.y,
+        (1 - t) * orange.z + t * dark_red.z
+    };
+}
+
+// Fog effect
+vec3 apply_fog(vec3 color, vec3 ray_dir, double distance) {
+    double transmittance = exp(-0.035 * distance);
+    vec3 fog_color = sky_color(ray_dir);
+    
+    return (vec3){
+        transmittance * color.x + (1 - transmittance) * fog_color.x,
+        transmittance * color.y + (1 - transmittance) * fog_color.y,
+        transmittance * color.z + (1 - transmittance) * fog_color.z
+    };
+}
+
+// Check if point is inside checkerboard pattern
+int is_black_tile(double x, double z) {
+    int ix = (int)floor(x);
+    int iz = (int)floor(z);
+    return (ix + iz) % 2 == 0;
+}
+
+// Get checkerboard color
+vec3 get_checkerboard_color(double x, double z) {
+    return is_black_tile(x, z) ? ground_plane.color2 : ground_plane.color1;
+}
+
+// Ray-sphere intersection
+int intersect_sphere(ray r, sphere s, double *t) {
+    vec3 oc = vec3_sub(r.origin, s.center);
+    double a = vec3_dot(r.direction, r.direction);
+    double b = 2.0 * vec3_dot(oc, r.direction);
+    double c = vec3_dot(oc, oc) - s.radius * s.radius;
+    double discriminant = b * b - 4 * a * c;
+    
+    if (discriminant < 0) {
+        return 0;
+    }
+    
+    double sqrt_discriminant = sqrt(discriminant);
+    double t1 = (-b - sqrt_discriminant) / (2.0 * a);
+    double t2 = (-b + sqrt_discriminant) / (2.0 * a);
+    
+    // Return the closest positive intersection
+    if (t1 > 1e-4) {
+        *t = t1;
+        return 1;
+    } else if (t2 > 1e-4) {
+        *t = t2;
+        return 1;
+    }
+    
+    return 0;
+}
+
+// Ray-plane intersection
+int intersect_plane(ray r, plane p, double *t) {
+    double denom = vec3_dot(p.normal, r.direction);
+    
+    if (fabs(denom) > 1e-6) {
+        vec3 op = vec3_sub(p.point, r.origin);
+        double t_val = vec3_dot(op, p.normal) / denom;
+        
+        if (t_val > 1e-4) {
+            *t = t_val;
+            return 1;
+        }
+    }
+    
+    return 0;
+}
+
+// Calculate Fresnel coefficient for dielectric
+double fresnel_dielectric(double cos_theta, double eta) {
+    // Schlick's approximation
+    double r0 = (1.0 - eta) / (1.0 + eta);
+    r0 = r0 * r0;
+    return r0 + (1.0 - r0) * pow(1.0 - cos_theta, 5.0);
+}
+
+// Reflect vector
+vec3 reflect(vec3 incident, vec3 normal) {
+    return vec3_sub(incident, vec3_mul(normal, 2.0 * vec3_dot(incident, normal)));
+}
+
+// Refract vector
+vec3 refract(vec3 incident, vec3 normal, double eta) {
+    double cos_i = vec3_dot(normal, incident);
+    double k = 1.0 - eta * eta * (1.0 - cos_i * cos_i);
+    
+    if (k < 0.0) {
+        // Total internal reflection
+        return reflect(incident, normal);
+    }
+    
+    vec3 refracted = vec3_sub(vec3_mul(incident, eta), 
+                             vec3_mul(normal, eta * cos_i + sqrt(k)));
+    return vec3_normalize(refracted);
+}
+
+// Shade a point
+vec3 shade_point(vec3 hit_point, vec3 normal, vec3 ray_dir, int is_glass, int is_chrome, int depth) {
+    vec3 color = {0.0, 0.0, 0.0};
+    
+    // Ambient lighting
+    color = vec3_add(color, vec3_mul((vec3){0.1, 0.1, 0.1}, 0.1));
+    
+    // Handle different material types
+    if (is_glass) {
+        // For glass, we'll compute both reflection and refraction
+        // But we'll simplify for this implementation
+        color = vec3_add(color, vec3_mul((vec3){1.0, 1.0, 1.0}, 0.8));
+    } else if (is_chrome) {
+        // Chrome material
+        color = vec3_add(color, vec3_mul((vec3){0.8, 0.8, 0.8}, 0.9));
+    } else {
+        // Checkerboard
+        vec3 checker_color = get_checkerboard_color(hit_point.x, hit_point.z);
+        color = vec3_add(color, checker_color);
+    }
+    
+    // Direct lighting from all lights
+    for (int i = 0; i < 3; i++) {
+        light l = lights[i];
+        vec3 light_dir = vec3_normalize(vec3_sub(l.position, hit_point));
+        double light_distance = vec3_length(vec3_sub(l.position, hit_point));
+        
+        // Shadow ray
+        ray shadow_ray = {hit_point, light_dir};
+        double shadow_t = 0.0;
+        int in_shadow = 0;
+        
+        // Test if we're in shadow
+        for (int s = 0; s < 2; s++) {
+            if (intersect_sphere(shadow_ray, spheres[s], &shadow_t)) {
+                if (shadow_t < light_distance - 1e-4) {
+                    in_shadow = 1;
+                    break;
+                }
+            }
+        }
+        
+        if (!in_shadow) {
+            // Diffuse lighting (Lambert)
+            double diffuse = fmax(0.0, vec3_dot(normal, light_dir));
+            
+            if (is_glass) {
+                // For glass, use some transmission
+                double transmission = 0.3;
+                color = vec3_add(color, vec3_mul(l.color, l.intensity * diffuse * transmission));
+            } else if (is_chrome) {
+                // Chrome doesn't have diffuse lighting, but we'll add some for realism
+                color = vec3_add(color, vec3_mul(l.color, l.intensity * diffuse * 0.1));
+            } else {
+                // Checkerboard diffuse
+                color = vec3_add(color, vec3_mul(l.color, l.intensity * diffuse));
+            }
+        }
+    }
+    
+    return color;
+}
+
+// Recursive ray tracing
+vec3 trace_ray(ray r, int depth) {
+    if (depth <= 0) {
+        return sky_color(r.direction);
+    }
+    
+    double closest_t = 1e20;
+    int hit_sphere = -1;
+    int is_glass = 0;
+    int is_chrome = 0;
+    vec3 hit_point = {0, 0, 0};
+    vec3 normal = {0, 0, 0};
+    
+    // Test intersection with spheres
+    for (int i = 0; i < 2; i++) {
+        double t;
+        if (intersect_sphere(r, spheres[i], &t) && t < closest_t) {
+            closest_t = t;
+            hit_sphere = i;
+            hit_point = vec3_add(r.origin, vec3_mul(r.direction, t));
+            
+            // Calculate normal
+            normal = vec3_normalize(vec3_sub(hit_point, spheres[i].center));
+            
+            // Check if ray is entering or exiting the sphere
+            if (vec3_dot(r.direction, normal) > 0) {
+                // Exiting, flip normal
+                normal = vec3_negate(normal);
+            }
+            
+            is_glass = (i == 0);  // First sphere is glass
+            is_chrome = (i == 1); // Second sphere is chrome
+        }
+    }
+    
+    // Test intersection with ground plane
+    double t_plane;
+    if (intersect_plane(r, ground_plane, &t_plane) && t_plane < closest_t) {
+        closest_t = t_plane;
+        hit_point = vec3_add(r.origin, vec3_mul(r.direction, t_plane));
+        normal = ground_plane.normal;
+        hit_sphere = -1;
+        is_glass = 0;
+        is_chrome = 0;
+    }
+    
+    // If we hit something
+    if (closest_t < 1e20) {
+        vec3 color;
+        
+        if (is_glass) {
+            // Handle glass sphere with reflection and refraction
+            double cos_theta = vec3_dot(vec3_negate(r.direction), normal);
+            double eta = 1.5;  // Index of refraction for glass
+            
+            // Calculate Fresnel coefficient
+            double fresnel = fresnel_dielectric(cos_theta, eta);
+            
+            // Reflection
+            vec3 reflected_dir = reflect(r.direction, normal);
+            ray reflected_ray = {vec3_add(hit_point, vec3_mul(normal, 1e-4)), reflected_dir};
+            vec3 reflected_color = trace_ray(reflected_ray, depth - 1);
+            
+            // Refraction
+            vec3 refracted_dir = refract(r.direction, normal, 1.0 / eta);
+            ray refracted_ray = {vec3_add(hit_point, vec3_mul(normal, -1e-4)), refracted_dir};
+            vec3 refracted_color = trace_ray(refracted_ray, depth - 1);
+            
+            // Combine reflection and refraction
+            color = vec3_add(vec3_mul(reflected_color, fresnel),
+                            vec3_mul(refracted_color, 1.0 - fresnel));
+            
+            // Apply fog to glass sphere
+            double distance = vec3_length(vec3_sub(hit_point, r.origin));
+            color = apply_fog(color, r.direction, distance);
+        } else if (is_chrome) {
+            // Handle chrome sphere with reflection
+            vec3 reflected_dir = reflect(r.direction, normal);
+            ray reflected_ray = {vec3_add(hit_point, vec3_mul(normal, 1e-4)), reflected_dir};
+            vec3 reflected_color = trace_ray(reflected_ray, depth - 1);
+            
+            // For chrome, mostly reflection with some diffuse
+            color = vec3_mul(reflected_color, 0.95);
+            
+            // Apply fog to chrome sphere
+            double distance = vec3_length(vec3_sub(hit_point, r.origin));
+            color = apply_fog(color, r.direction, distance);
+        } else {
+            // Hit ground plane (checkerboard)
+            // Shade the point
+            color = shade_point(hit_point, normal, r.direction, 0, 0, depth);
+            
+            // Apply fog to ground
+            double distance = vec3_length(vec3_sub(hit_point, r.origin));
+            color = apply_fog(color, r.direction, distance);
+        }
+        
+        return color;
+    } else {
+        // No hit, return sky color
+        return sky_color(r.direction);
+    }
+}
+
+// Save TGA image
+int save_tga(const char* filename, unsigned char* data, int width, int height) {
+    FILE* file = fopen(filename, "wb");
+    if (!file) {
+        return 0;
+    }
+    
+    // TGA Header (18 bytes)
+    unsigned char header[18] = {0};
+    header[2] = 2;  // Image type: uncompressed RGB
+    header[12] = width & 0xFF;          // Width (little-endian)
+    header[13] = (width >> 8) & 0xFF;
+    header[14] = height & 0xFF;         // Height (little-endian)
+    header[15] = (height >> 8) & 0xFF;
+    header[16] = 24;  // Bits per pixel
+    header[17] = 0x20; // Top-left origin
+    
+    fwrite(header, 1, 18, file);
+    
+    // Write pixel data (BGR order)
+    for (int y = height - 1; y >= 0; y--) {
+        for (int x = 0; x < width; x++) {
+            int idx = (y * width + x) * 3;
+            // BGR order
+            fputc(data[idx + 2], file);  // Blue
+            fputc(data[idx + 1], file);  // Green
+            fputc(data[idx + 0], file);  // Red
+        }
+    }
+    
+    fclose(file);
+    return 1;
+}
+
+int main(void) {
+    const int width = 1280;
+    const int height = 720;
+    // const int samples_per_pixel = 4;  // 2x2 subpixel sampling
+    
+    // Allocate memory for image
+    unsigned char* image = (unsigned char*)malloc(width * height * 3);
+    if (!image) {
+        fprintf(stderr, "Failed to allocate memory for image\n");
+        return 1;
+    }
+    
+    // Camera setup
+    vec3 camera_pos = {0.0, 2.6, 6.5};
+    vec3 camera_target = {0.0, 1.0, 0.0};
+    vec3 camera_up = {0.0, 1.0, 0.0};
+    
+    // Compute camera coordinate system
+    vec3 forward = vec3_normalize(vec3_sub(camera_target, camera_pos));
+    vec3 right = vec3_normalize(vec3_cross(forward, camera_up));
+    vec3 up = vec3_cross(right, forward);
+    
+    // Field of view
+    double fov = 45.0 * M_PI / 180.0;
+    double aspect_ratio = (double)width / (double)height;
+    double half_height = tan(fov / 2.0);
+    double half_width = half_height * aspect_ratio;
+    
+    // Render the image
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            vec3 pixel_color = {0.0, 0.0, 0.0};
+            
+            // Sub-pixel sampling
+            for (int sy = 0; sy < 2; sy++) {
+                for (int sx = 0; sx < 2; sx++) {
+                    // Calculate sub-pixel position
+                    double u = (x + (sx + 0.5) / 2.0) / width;
+                    double v = (y + (sy + 0.5) / 2.0) / height;
+                    
+                    // Scale and translate to [-1, 1] range
+                    double s = (u - 0.5) * 2.0 * half_width;
+                    double t = (0.5 - v) * 2.0 * half_height;
+                    
+                    // Construct ray
+                    vec3 ray_dir = vec3_normalize(
+                        vec3_add(vec3_add(vec3_mul(right, s), vec3_mul(up, t)), forward)
+                    );
+                    
+                    ray r = {camera_pos, ray_dir};
+                    
+                    // Trace ray
+                    vec3 color = trace_ray(r, 8);
+                    
+                    // Convert to linear RGB and accumulate
+                    pixel_color = vec3_add(pixel_color, color);
+                }
+            }
+            
+            // Average samples
+            pixel_color = vec3_div(pixel_color, 4.0);
+            
+            // Gamma correction (sRGB)
+            pixel_color.x = pow(fmax(0.0, fmin(1.0, pixel_color.x)), 1.0 / 2.2);
+            pixel_color.y = pow(fmax(0.0, fmin(1.0, pixel_color.y)), 1.0 / 2.2);
+            pixel_color.z = pow(fmax(0.0, fmin(1.0, pixel_color.z)), 1.0 / 2.2);
+            
+            // Convert to 8-bit and store
+            int idx = (y * width + x) * 3;
+            image[idx + 0] = (unsigned char)(pixel_color.x * 255.0);  // Red
+            image[idx + 1] = (unsigned char)(pixel_color.y * 255.0);  // Green
+            image[idx + 2] = (unsigned char)(pixel_color.z * 255.0);  // Blue
+        }
+    }
+    
+    // Save image
+    if (!save_tga("out.tga", image, width, height)) {
+        fprintf(stderr, "Failed to save image\n");
+        free(image);
+        return 1;
+    }
+    
+    free(image);
+    printf("Raytracer completed successfully. Image saved as out.tga\n");
+    return 0;
+}
