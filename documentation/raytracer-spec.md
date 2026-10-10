@@ -1,8 +1,8 @@
-# C89 Mini Ray Tracer — Coding Benchmark
+# C99 Mini Ray Tracer — Coding Benchmark
 
 ## Task
 
-Implement, compile, and run a small standalone ray tracer in strict ANSI C89. Render two spheres side by side, one made of clear glass and one made of polished chrome, resting on an infinite black-and-white checkerboard plane. Use classic three-point lighting, a red-to-orange gradient sky, and distance fog that blends the ground into the sky.
+Implement, compile, and run a small standalone ray tracer in strict ISO C99. Render two spheres side by side, one made of clear glass and one made of polished chrome, resting on an infinite black-and-white checkerboard plane. Use classic three-point lighting, a red-to-orange gradient sky, and distance fog that blends the ground into the sky.
 
 The final image must be a **1280 × 720 bitmap saved as `out.tga`** in the current working directory.
 
@@ -11,7 +11,7 @@ You must complete the implementation and produce the image using the local `cc` 
 ## Deliverables and implementation constraints
 
 - Put the entire implementation in **one source file, `main.c`**. Standard C headers are allowed; do not create additional project `.c` or `.h` files.
-- Use strict C89, including C89-compatible comments, declarations, and standard library calls. Do not use C99 features, compiler extensions, or C++.
+- Use strict C99, including C99-compatible comments, declarations, and standard library calls. C99 features such as `//` comments, mixed declarations and statements, and compound literals are allowed. Do not use features from later C standards, compiler extensions, or C++.
 - Use only the C standard library and the system math library. No external dependencies, graphics APIs, image libraries, downloaded assets, or external rendering tools.
 - Do not create a Makefile, CMake configuration, build script, or package configuration.
 - Perform all ray tracing and image encoding in the program itself, on the CPU.
@@ -140,15 +140,15 @@ Open the file in binary mode and write header fields explicitly, avoiding assump
 Use the local compiler yourself:
 
 ```sh
-cc -std=c89 -pedantic-errors -Wall -Wextra -O2 main.c -lm -o raytracer
+cc -std=c99 -pedantic-errors -Wall -Wextra -O2 main.c -lm -o raytracer
 ./raytracer
 ```
 
 1. Write the full implementation in `main.c`.
-2. Run the compiler command above. Read its diagnostics and correct the source until it builds successfully with no warnings. Keep the strict C89 flags enabled.
+2. Run the compiler command above. Read its diagnostics and correct the source until it builds successfully with no warnings. Keep the strict C99 flags enabled.
 3. Run the resulting executable. Correct any crashes, runtime errors, output failures, or rendering defects, then rebuild and rerun as necessary.
 4. Verify that the final run exits successfully and produces a newly generated `out.tga` with the required header, dimensions, pixel format, and exact file size. The pixel data must contain a nontrivial rendered image.
 5. If an image viewing tool is available, inspect the result for composition, material appearance, orientation, and the fog transition. Fix visible defects and regenerate the image. If visual inspection is unavailable, state that limitation while completing the available file and pixel checks.
 6. Finish with a short report listing the artifacts, the actual compile and execution commands used, and the verification performed. Report only checks you actually ran.
 
-Do not stop at a proposed solution, pseudocode, an uncompiled source listing, or a request for the user to compile it. The task is complete when the single-file C89 program has been compiled locally and has successfully rendered the required `out.tga` image.
+Do not stop at a proposed solution, pseudocode, an uncompiled source listing, or a request for the user to compile it. The task is complete when the single-file C99 program has been compiled locally and has successfully rendered the required `out.tga` image.
