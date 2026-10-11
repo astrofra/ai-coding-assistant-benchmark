@@ -1,0 +1,3 @@
+```
+■ {"error":{"message":"litellm.ContextWindowExceededError: litellm.BadRequestError: ContextWindowExceededError: OpenAIException - This model's maximum context length is 131072 tokens. However, you requested 32768 output tokens and your prompt contains at least 98305 input tokens, for a total of at least 131073 tokens. Please reduce the length of the input prompt or the number of requested output tokens. (parameter=input_tokens, value=98305)\nmodel=deepseek-v4-flash-0731. context_window_fallbacks=None. fallbacks=None.\n\nSet 'context_window_fallback' - https://docs.litellm.ai/docs/routing#fallbacks\n\nLiteLLM: model group 'deepseek-v4-flash-0731' failed with the error above. No fallback was attempted.","type":"invalid_request_error","param":null,"code":"400"}}
+```
