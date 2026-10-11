@@ -1,0 +1,68 @@
+[
+{
+  "directory": "/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++  -isystem /Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/third_party -O3 -DNDEBUG -std=c++11 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.0.sdk -o CMakeFiles/stb_image.dir/src/stb_image.cpp.o -c /Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src/stb_image.cpp",
+  "file": "/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src/stb_image.cpp",
+  "output": "CMakeFiles/stb_image.dir/src/stb_image.cpp.o"
+},
+{
+  "directory": "/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++  -isystem /Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/third_party -O3 -DNDEBUG -std=c++11 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.0.sdk -o CMakeFiles/stb_image_write.dir/src/stb_image_write.cpp.o -c /Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src/stb_image_write.cpp",
+  "file": "/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src/stb_image_write.cpp",
+  "output": "CMakeFiles/stb_image_write.dir/src/stb_image_write.cpp.o"
+},
+{
+  "directory": "/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++  -I/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src -isystem /Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/third_party -isystem /opt/homebrew/include -isystem /opt/homebrew/include/SDL2 -O3 -DNDEBUG -std=c++11 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.0.sdk -Wall -Wextra -ffp-contract=off -D_THREAD_SAFE -o CMakeFiles/flora_core.dir/src/cal2.cpp.o -c /Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src/cal2.cpp",
+  "file": "/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src/cal2.cpp",
+  "output": "CMakeFiles/flora_core.dir/src/cal2.cpp.o"
+},
+{
+  "directory": "/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++  -I/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src -isystem /Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/third_party -isystem /opt/homebrew/include -isystem /opt/homebrew/include/SDL2 -O3 -DNDEBUG -std=c++11 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.0.sdk -Wall -Wextra -ffp-contract=off -D_THREAD_SAFE -o CMakeFiles/flora_core.dir/src/cal2panel.cpp.o -c /Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src/cal2panel.cpp",
+  "file": "/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src/cal2panel.cpp",
+  "output": "CMakeFiles/flora_core.dir/src/cal2panel.cpp.o"
+},
+{
+  "directory": "/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++  -I/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src -isystem /Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/third_party -isystem /opt/homebrew/include -isystem /opt/homebrew/include/SDL2 -O3 -DNDEBUG -std=c++11 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.0.sdk -Wall -Wextra -ffp-contract=off -D_THREAD_SAFE -o CMakeFiles/flora_core.dir/src/IdlePanel.cpp.o -c /Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src/IdlePanel.cpp",
+  "file": "/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src/IdlePanel.cpp",
+  "output": "CMakeFiles/flora_core.dir/src/IdlePanel.cpp.o"
+},
+{
+  "directory": "/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++  -I/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src -isystem /Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/third_party -isystem /opt/homebrew/include -isystem /opt/homebrew/include/SDL2 -O3 -DNDEBUG -std=c++11 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.0.sdk -Wall -Wextra -ffp-contract=off -D_THREAD_SAFE -o CMakeFiles/flora_core.dir/src/Ctm.cpp.o -c /Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src/Ctm.cpp",
+  "file": "/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src/Ctm.cpp",
+  "output": "CMakeFiles/flora_core.dir/src/Ctm.cpp.o"
+},
+{
+  "directory": "/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++  -I/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src -isystem /Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/third_party -isystem /opt/homebrew/include -isystem /opt/homebrew/include/SDL2 -O3 -DNDEBUG -std=c++11 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.0.sdk -Wall -Wextra -ffp-contract=off -D_THREAD_SAFE -o CMakeFiles/flora_core.dir/src/efloat.cpp.o -c /Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src/efloat.cpp",
+  "file": "/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src/efloat.cpp",
+  "output": "CMakeFiles/flora_core.dir/src/efloat.cpp.o"
+},
+{
+  "directory": "/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++  -I/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src -isystem /Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/third_party -isystem /opt/homebrew/include -isystem /opt/homebrew/include/SDL2 -O3 -DNDEBUG -std=c++11 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.0.sdk -Wall -Wextra -ffp-contract=off -D_THREAD_SAFE -o CMakeFiles/flora_core.dir/src/eint.cpp.o -c /Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src/eint.cpp",
+  "file": "/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src/eint.cpp",
+  "output": "CMakeFiles/flora_core.dir/src/eint.cpp.o"
+},
+{
+  "directory": "/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++  -I/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src -isystem /Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/third_party -isystem /opt/homebrew/include -isystem /opt/homebrew/include/SDL2 -O3 -DNDEBUG -std=c++11 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.0.sdk -Wall -Wextra -ffp-contract=off -D_THREAD_SAFE -o CMakeFiles/flora_core.dir/src/host.cpp.o -c /Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src/host.cpp",
+  "file": "/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src/host.cpp",
+  "output": "CMakeFiles/flora_core.dir/src/host.cpp.o"
+},
+{
+  "directory": "/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++  -I/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src -isystem /Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/third_party -isystem /opt/homebrew/include -isystem /opt/homebrew/include/SDL2 -O3 -DNDEBUG -std=c++11 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.0.sdk -Wall -Wextra -ffp-contract=off -D_THREAD_SAFE -o CMakeFiles/flora_core.dir/src/assets.cpp.o -c /Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src/assets.cpp",
+  "file": "/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src/assets.cpp",
+  "output": "CMakeFiles/flora_core.dir/src/assets.cpp.o"
+},
+{
+  "directory": "/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/build",
+  "command": "/Library/Developer/CommandLineTools/usr/bin/c++ -DSDL_MAIN_HANDLED -I/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src -I/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/third_party -isystem /opt/homebrew/include -isystem /opt/homebrew/include/SDL2 -O3 -DNDEBUG -std=c++11 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.0.sdk -Wall -Wextra -ffp-contract=off -D_THREAD_SAFE -o CMakeFiles/flora.dir/src/main.cpp.o -c /Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src/main.cpp",
+  "file": "/Users/fra/dev/ai-coding-assistant-benchmark/code-translation-benchmark/codex-albert-deepseekv4-001/cpp/src/main.cpp",
+  "output": "CMakeFiles/flora.dir/src/main.cpp.o"
+}
+]

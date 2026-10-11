@@ -1,0 +1,7 @@
+# Milliseconds mouse-x mouse-y releases month day capture-name
+# Matches the canonical scenario rows through t=1500 with the first morph.
+0 0 0 0 10 1 -
+250 200 200 0 10 1 -
+500 100 250 0 10 1 -
+1000 0 0 1 10 1 -
+1500 0 0 0 10 1 transition

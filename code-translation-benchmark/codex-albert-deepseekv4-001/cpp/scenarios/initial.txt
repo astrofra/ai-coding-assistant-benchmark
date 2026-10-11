@@ -1,0 +1,2 @@
+# Milliseconds mouse-x mouse-y releases month day capture-name
+0 0 0 0 10 1 initial

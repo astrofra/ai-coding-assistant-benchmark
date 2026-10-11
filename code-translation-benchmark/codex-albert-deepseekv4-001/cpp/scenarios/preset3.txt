@@ -1,0 +1,12 @@
+# Milliseconds mouse-x mouse-y releases month day capture-name
+# Matches the canonical scenario rows through t=9000 (3 release morphs -> preset 3).
+0 0 0 0 10 1 -
+250 200 200 0 10 1 -
+500 100 250 0 10 1 -
+1000 0 0 1 10 1 -
+1500 0 0 0 10 1 -
+3000 0 0 0 10 1 -
+4000 0 0 1 10 1 -
+6000 0 0 0 10 1 -
+7000 0 0 1 10 1 -
+9000 0 0 0 10 1 preset3
