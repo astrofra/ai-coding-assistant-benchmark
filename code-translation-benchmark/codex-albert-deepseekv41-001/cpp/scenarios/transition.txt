@@ -1,0 +1,6 @@
+# Flora fixture scenario: mid-morph from preset 1 (pink) toward preset 2.
+# One click at t=1000 releases a new petal form; the frame at t=1500 shows the
+# 0.75^3 colour/shape interpolation.
+# time_ms  mouse_x  mouse_y  click_count  month  day  name
+1000       0        0        1            6      15   -
+1500       0        0        0            6      15   transition

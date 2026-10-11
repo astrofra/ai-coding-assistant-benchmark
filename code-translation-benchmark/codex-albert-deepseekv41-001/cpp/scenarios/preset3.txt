@@ -1,0 +1,4 @@
+# Flora fixture scenario: three clicks advance to preset 4 (orange).
+# time_ms  mouse_x  mouse_y  click_count  month  day  name
+0          0        0        3            6      15   -
+9000       0        0        0            6      15   preset3

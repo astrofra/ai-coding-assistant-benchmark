@@ -1,0 +1,3 @@
+# Flora fixture scenario: initial state (preset 1, no morph).
+# time_ms  mouse_x  mouse_y  click_count  month  day  name
+0          0        0        0            6      15   initial
